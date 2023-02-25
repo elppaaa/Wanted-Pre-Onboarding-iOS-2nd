@@ -17,7 +17,7 @@ final class Cell: UICollectionViewCell {
   let imageView = UIImageView()
   let progressBar = UIProgressView(progressViewStyle: .bar)
   let downloadButton: UIButton = {
-    let button = UIButton(configuration: .borderedTinted())
+    let button = UIButton(configuration: .filled())
     button.setTitle("Down", for: .normal)
     return button
   }()
