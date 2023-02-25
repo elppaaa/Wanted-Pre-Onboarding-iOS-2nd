@@ -14,6 +14,7 @@ class ViewController: UIViewController {
   private lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: generateLayout())
   private var dataSource: DataSource!
   
+  private let imageDownloader = ImageDownloader()
   
   override func loadView() {
     super.loadView()
@@ -37,9 +38,27 @@ class ViewController: UIViewController {
   private func generateDataSource() -> DataSource {
     collectionView.register(Cell.self, forCellWithReuseIdentifier: Cell.reuseIdentifier)
     
-    return DataSource(collectionView: collectionView) { collectionView, indexPath, item in
+    return DataSource(collectionView: collectionView) { [weak imageDownloader] collectionView, indexPath, item in
       let cell = collectionView.dequeueReusableCell(withReuseIdentifier: Cell.reuseIdentifier, for: indexPath) as? Cell
-      cell?.update(from: item)
+      guard let imageDownloader else { return cell ?? UICollectionViewCell() }
+      
+      let worker = imageDownloader.setImage(url: item.url) { [weak cell] state in
+        guard let cell else { return }
+        switch state {
+        case .done(let data):
+          cell.imageView.image = UIImage(data: data)
+        case .progress(let percentage):
+          cell.progressBar.progress = Float(percentage)
+        case .ready:
+          debugPrint("Ready...")
+          
+        default:
+          break;
+        }
+      }
+      
+      cell?.worker = worker
+      
       return cell
     }
   }

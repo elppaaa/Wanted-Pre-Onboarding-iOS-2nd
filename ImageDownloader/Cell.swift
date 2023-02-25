@@ -14,14 +14,14 @@ final class Cell: UICollectionViewCell {
   
   static var reuseIdentifier: String { String(describing: Cell.self) }
   
-  private let imageView = UIImageView()
-  private let progressBar = UIProgressView(progressViewStyle: .bar)
-  private let downloadButton: UIButton = {
+  let imageView = UIImageView()
+  let progressBar = UIProgressView(progressViewStyle: .bar)
+  let downloadButton: UIButton = {
     let button = UIButton(configuration: .borderedTinted())
     button.setTitle("Down", for: .normal)
     return button
   }()
-  private var url: URL?
+  var worker: Worker?
   
   // MARK: Initialize
   
@@ -30,6 +30,7 @@ final class Cell: UICollectionViewCell {
   override init(frame: CGRect) {
     super.init(frame: frame)
     configLayout()
+    reset()
     downloadButton.addTarget(self, action: #selector(didButtonTapped), for: .touchUpInside)
   }
   
@@ -38,41 +39,20 @@ final class Cell: UICollectionViewCell {
   override func prepareForReuse() {
     super.prepareForReuse()
     reset()
+    worker?.cancel()
   }
   
   // MARK: Logic
   
-  func update(from model: Item) {
-    reset()
-    url = model.url
-  }
-  
   private func reset() {
-    imageView.image = nil
+    imageView.image = UIImage(systemName: "photo")
     progressBar.progress = 0.0
   }
   
   @objc
   private func didButtonTapped() {
-    guard let url else { return }
     reset()
-    ImageDownloader(url: url) { [weak self] state in
-      switch state {
-      case .ready:
-        break
-      case .progress(let percentage):
-        DispatchQueue.main.async {
-          self?.progressBar.progress = Float(percentage)
-        }
-      case .done(let imageData):
-        DispatchQueue.main.async {
-          self?.imageView.image = UIImage(data: imageData)
-        }
-      case .failed(let error):
-        debugPrint(String(describing: error))
-      }
-    }
-    .start()
+    worker?.start()
   }
   
   private func configLayout() {
@@ -92,7 +72,7 @@ final class Cell: UICollectionViewCell {
     
     NSLayoutConstraint.activate([
       progressBar.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
-      progressBar.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 15),
+      progressBar.leadingAnchor.constraint(equalTo: imageView.trailingAnchor, constant: 8),
       progressBar.heightAnchor.constraint(equalToConstant: 20),
     ])
     
