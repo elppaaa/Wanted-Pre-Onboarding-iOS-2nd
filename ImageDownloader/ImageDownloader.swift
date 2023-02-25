@@ -7,8 +7,15 @@
 
 import Foundation
 
-public final class ImageDownloader: NSObject {
-  public typealias Completion = (DownloadState) -> Void
+typealias Completion = (DownloadState) -> Void
+
+final class ImageDownloader: NSObject {
+  
+  let queue: OperationQueue
+  private var session: URLSession!
+  
+  private var imageCache: [String: Data] = [:]
+  private var progressList: [String: Progress] = [:]
   
   #if DEBUG
   deinit {
@@ -16,49 +23,84 @@ public final class ImageDownloader: NSObject {
   }
   #endif
   
-  public init(
+  init(
     configuration: URLSessionConfiguration = .default,
-    workQueue queue: OperationQueue = .init(),
-    url: URL,
-    completionHandler: @escaping Completion) {
-    self.url = url
-    self.completionHandler = completionHandler
+    workQueue queue: OperationQueue = .main) {
+    self.queue = queue
     super.init()
+      let configuration = configuration
+    configuration.requestCachePolicy = .returnCacheDataElseLoad
     self.session = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
   }
   
-  private let url: URL
-  private var session: URLSession!
-  public var completionHandler: Completion
-  
-  public func start() {
-    completionHandler(.ready)
+  @discardableResult
+  func setImage(url: URL, handler: @escaping Completion) -> Worker? {
     
-    let request = URLRequest(url: url)
-    let task = session.downloadTask(with: request)
-    task.delegate = self
-    task.resume()
+    let object = Progress(
+      url: url,
+      workBlock: handler,
+      startBlock: { [weak self] in
+        guard let self else { return (nil, nil) }
+        if let image = self.imageCache[url.absoluteString] {
+          debugPrint("🌠 Cache Hit")
+          return (image, nil)
+        }
+        
+        let request = URLRequest(url: url)
+        let task = self.session.dataTask(with: request)
+        task.delegate = self
+        
+        return (nil, task)
+      }, cancelBlock: { [weak self] in
+        self?.cancel(key: url.absoluteString)
+      })
+    
+    progressList[url.absoluteString] = object
+    
+    return object
   }
   
+  private func cancel(key: String) {
+    progressList[key]?.task?.cancel()
+    progressList.removeValue(forKey: key)
+  }
 }
 
-
-
-extension ImageDownloader: URLSessionDownloadDelegate {
-  public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-    do {
-      let data = try Data(contentsOf: location)
-      completionHandler(.done(data))
-      session.finishTasksAndInvalidate()
-    } catch {
-      completionHandler(.failed(error))
-      session.invalidateAndCancel()
+extension ImageDownloader: URLSessionDataDelegate {
+  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+    guard let key = dataTask.originalRequest?.url?.absoluteString else {
+      assertionFailure("Key not found:: \(dataTask)")
+      return
     }
+    
+    print("\(key):: \(data.count)")
+    progressList[key]?.data.append(data)
+    guard let expectedContentLength = dataTask.response?.expectedContentLength,
+          expectedContentLength > 0,
+          let size = progressList[key]?.data.count
+    else { return }
+    
+    let percentage = Double(size)/Double(expectedContentLength)
+    print("\(key):: \(percentage)")
+    progressList[key]?.workBlock?(.progress(percentage))
   }
-  public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-    let percentage = Double(totalBytesWritten)/Double(totalBytesExpectedToWrite)
-    print(percentage)
-    completionHandler(.progress(percentage))
+  
+  func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+    guard let key = task.originalRequest?.url?.absoluteString else {
+      assertionFailure("Key not found:: \(task)")
+      return
+    }
+    defer { progressList.removeValue(forKey: key) }
+    
+    guard let item = progressList[key] else { return }
+    
+    imageCache[key] = item.data
+    item.workBlock?(.done(item.data))
+    print("\(key):: \(item.data.count)")
+  }
+  
+  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
+    completionHandler(proposedResponse)
   }
 }
 
@@ -68,3 +110,51 @@ public enum DownloadState {
   case failed(Error)
   case ready
 }
+
+protocol Worker {
+  mutating func start()
+  func cancel()
+}
+
+struct Progress {
+  var data: Data = Data()
+  var workBlock: Completion?
+  
+  fileprivate let url: URL
+  fileprivate var task: URLSessionDataTask?
+  
+  fileprivate let startBlock: () -> (Data?, URLSessionDataTask?)
+  fileprivate let cancelBlock: () -> ()
+  init(
+    url: URL,
+    workBlock: Completion?,
+    startBlock: @escaping () -> (Data?, URLSessionDataTask?),
+    cancelBlock: @escaping () -> ()) {
+    self.url = url
+    self.startBlock = startBlock
+    self.workBlock = workBlock
+    self.cancelBlock = cancelBlock
+  }
+}
+
+extension Progress: Worker {
+  mutating func start() {
+    let (data, task) = startBlock()
+    if let data {
+      workBlock?(.progress(1.0))
+      workBlock?(.done(data))
+      return
+    }
+    
+    if let task {
+      workBlock?(.ready)
+      self.task = task
+      task.resume()
+    }
+  }
+  
+  func cancel() {
+    cancelBlock()
+  }
+}
+
