@@ -50,8 +50,6 @@ final class ViewController: UIViewController {
           cell.imageView.image = UIImage(data: data)
         case .progress(let percentage):
           cell.progressBar.progress = Float(percentage)
-        case .ready:
-          debugPrint("Ready...")
           
         default:
           break;

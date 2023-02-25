@@ -11,26 +11,18 @@ typealias Completion = (DownloadState) -> Void
 
 final class ImageDownloader: NSObject {
   
-  let queue: OperationQueue
+  let queue: OperationQueue = .main
   private var session: URLSession!
   
   private var imageCache: [String: Data] = [:]
   private var progressList: [String: Progress] = [:]
   
-  #if DEBUG
-  deinit {
-    print("🔥 ImageDownloader deinit")
-  }
-  #endif
-  
   init(
-    configuration: URLSessionConfiguration = .default,
-    workQueue queue: OperationQueue = .main) {
-    self.queue = queue
+    configuration: URLSessionConfiguration = .default) {
     super.init()
       let configuration = configuration
     configuration.requestCachePolicy = .returnCacheDataElseLoad
-    self.session = URLSession(configuration: configuration, delegate: self, delegateQueue: queue)
+    self.session = URLSession(configuration: configuration, delegate: nil, delegateQueue: queue)
   }
   
   @discardableResult
@@ -42,7 +34,6 @@ final class ImageDownloader: NSObject {
       startBlock: { [weak self] in
         guard let self else { return (nil, nil) }
         if let image = self.imageCache[url.absoluteString] {
-          debugPrint("🌠 Cache Hit")
           return (image, nil)
         }
         
@@ -73,7 +64,6 @@ extension ImageDownloader: URLSessionDataDelegate {
       return
     }
     
-    print("\(key):: \(data.count)")
     progressList[key]?.data.append(data)
     guard let expectedContentLength = dataTask.response?.expectedContentLength,
           expectedContentLength > 0,
@@ -81,7 +71,6 @@ extension ImageDownloader: URLSessionDataDelegate {
     else { return }
     
     let percentage = Double(size)/Double(expectedContentLength)
-    print("\(key):: \(percentage)")
     progressList[key]?.workBlock?(.progress(percentage))
   }
   
@@ -96,11 +85,6 @@ extension ImageDownloader: URLSessionDataDelegate {
     
     imageCache[key] = item.data
     item.workBlock?(.done(item.data))
-    print("\(key):: \(item.data.count)")
-  }
-  
-  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
-    completionHandler(proposedResponse)
   }
 }
 
