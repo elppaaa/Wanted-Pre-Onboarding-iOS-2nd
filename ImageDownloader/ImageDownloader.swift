@@ -18,37 +18,34 @@ final class ImageDownloader: NSObject {
   private var progressList: [String: Progress] = [:]
   
   init(
-    configuration: URLSessionConfiguration = .default) {
+    configuration: URLSessionConfiguration = .ephemeral) {
     super.init()
-      let configuration = configuration
-    configuration.requestCachePolicy = .returnCacheDataElseLoad
     self.session = URLSession(configuration: configuration, delegate: nil, delegateQueue: queue)
   }
   
   @discardableResult
-  func setImage(url: URL, handler: @escaping Completion) -> Worker? {
+  func setImage(url: URL, handler: @escaping Completion) -> TaskCancellable? {
+    if let image = imageCache[url.absoluteString] {
+      handler(.progress(1.0))
+      handler(.done(image))
+      return nil
+    }
     
+    let request = URLRequest(url: url)
+    let task = self.session.dataTask(with: request)
+    task.delegate = self
+
     let object = Progress(
       url: url,
-      workBlock: handler,
-      startBlock: { [weak self] in
-        guard let self else { return (nil, nil) }
-        if let image = self.imageCache[url.absoluteString] {
-          return (image, nil)
-        }
-        
-        let request = URLRequest(url: url)
-        let task = self.session.dataTask(with: request)
-        task.delegate = self
-        
-        return (nil, task)
-      }, cancelBlock: { [weak self] in
-        self?.cancel(key: url.absoluteString)
-      })
+      workBlock: handler)
+    
+    task.resume()
     
     progressList[url.absoluteString] = object
     
-    return object
+    return TaskCancellable { [weak self] in
+      self?.cancel(key: url.absoluteString)
+    }
   }
   
   private func cancel(key: String) {
@@ -82,9 +79,13 @@ extension ImageDownloader: URLSessionDataDelegate {
     defer { progressList.removeValue(forKey: key) }
     
     guard let item = progressList[key] else { return }
-    
+      
     imageCache[key] = item.data
     item.workBlock?(.done(item.data))
+  }
+  
+  func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> Void) {
+    completionHandler(proposedResponse)
   }
 }
 
@@ -100,45 +101,25 @@ protocol Worker {
   func cancel()
 }
 
-struct Progress {
+fileprivate struct Progress {
   var data: Data = Data()
   var workBlock: Completion?
   
   fileprivate let url: URL
   fileprivate var task: URLSessionDataTask?
   
-  fileprivate let startBlock: () -> (Data?, URLSessionDataTask?)
-  fileprivate let cancelBlock: () -> ()
   init(
     url: URL,
-    workBlock: Completion?,
-    startBlock: @escaping () -> (Data?, URLSessionDataTask?),
-    cancelBlock: @escaping () -> ()) {
+    workBlock: Completion?) {
     self.url = url
-    self.startBlock = startBlock
     self.workBlock = workBlock
-    self.cancelBlock = cancelBlock
   }
 }
 
-extension Progress: Worker {
-  mutating func start() {
-    let (data, task) = startBlock()
-    if let data {
-      workBlock?(.progress(1.0))
-      workBlock?(.done(data))
-      return
-    }
-    
-    if let task {
-      workBlock?(.ready)
-      self.task = task
-      task.resume()
-    }
-  }
+struct TaskCancellable {
+  fileprivate let cancelTask: () -> Void
   
   func cancel() {
-    cancelBlock()
+    cancelTask()
   }
 }
-

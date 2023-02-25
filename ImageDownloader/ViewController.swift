@@ -41,22 +41,7 @@ final class ViewController: UIViewController {
   private func generateDataSource() -> DataSource {
     DataSource(collectionView: contentView.collectionView) { [weak imageDownloader] collectionView, indexPath, item in
       let cell = collectionView.dequeueReusableCell(withReuseIdentifier: Cell.reuseIdentifier, for: indexPath) as? Cell
-      guard let imageDownloader else { return cell ?? UICollectionViewCell() }
-      
-      let worker = imageDownloader.setImage(url: item.url) { [weak cell] state in
-        guard let cell else { return }
-        switch state {
-        case .done(let data):
-          cell.imageView.image = UIImage(data: data)
-        case .progress(let percentage):
-          cell.progressBar.progress = Float(percentage)
-          
-        default:
-          break;
-        }
-      }
-      
-      cell?.worker = worker
+      cell?.downlaodImage(with: imageDownloader, url: item.url)
       
       return cell
     }

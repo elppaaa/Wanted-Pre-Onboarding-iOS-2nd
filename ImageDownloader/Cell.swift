@@ -21,7 +21,9 @@ final class Cell: UICollectionViewCell {
     button.setTitle("Down", for: .normal)
     return button
   }()
-  var worker: Worker?
+  var worker: (() -> TaskCancellable?)?
+  var taskCancel: TaskCancellable?
+  
   
   // MARK: Initialize
   
@@ -39,10 +41,27 @@ final class Cell: UICollectionViewCell {
   override func prepareForReuse() {
     super.prepareForReuse()
     reset()
-    worker?.cancel()
+    taskCancel?.cancel()
   }
   
   // MARK: Logic
+  
+  func downlaodImage(with downloader: ImageDownloader?, url: URL) {
+    worker = { 
+      downloader?.setImage(url: url) { [weak self] state in
+        guard let self else { return }
+        switch state {
+        case .done(let data):
+          self.imageView.image = UIImage(data: data)
+        case .progress(let percentage):
+          self.progressBar.progress = Float(percentage)
+          
+        default:
+          break;
+        }
+      }
+    }
+  }
   
   private func reset() {
     imageView.image = UIImage(systemName: "photo")
@@ -52,7 +71,7 @@ final class Cell: UICollectionViewCell {
   @objc
   func didButtonTapped() {
     reset()
-    worker?.start()
+    taskCancel = worker?()
   }
   
   private func configLayout() {
