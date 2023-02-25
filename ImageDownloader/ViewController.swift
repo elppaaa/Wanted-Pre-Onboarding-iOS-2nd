@@ -7,23 +7,26 @@
 
 import UIKit
 
-class ViewController: UIViewController {
+final class ViewController: UIViewController {
 
   typealias DataSource = UICollectionViewDiffableDataSource<Section, Item>
 
-  private lazy var collectionView = UICollectionView(frame: .zero, collectionViewLayout: generateLayout())
+  private let contentView = MainView()
+  
   private var dataSource: DataSource!
   
   private let imageDownloader = ImageDownloader()
   
   override func loadView() {
     super.loadView()
-    view = collectionView
+    view = contentView
     self.dataSource = generateDataSource()
   }
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    contentView.downloadAll.addTarget(self, action: #selector(didDownloadAllButtonTapped), for: .touchUpInside)
+    
     let _sources = (0..<100)
       .compactMap { _ in URL(string: "https://picsum.photos/id/\(arc4random() % 500)/400") }
       .map { Item(url: $0) }
@@ -36,9 +39,7 @@ class ViewController: UIViewController {
   }
   
   private func generateDataSource() -> DataSource {
-    collectionView.register(Cell.self, forCellWithReuseIdentifier: Cell.reuseIdentifier)
-    
-    return DataSource(collectionView: collectionView) { [weak imageDownloader] collectionView, indexPath, item in
+    DataSource(collectionView: contentView.collectionView) { [weak imageDownloader] collectionView, indexPath, item in
       let cell = collectionView.dequeueReusableCell(withReuseIdentifier: Cell.reuseIdentifier, for: indexPath) as? Cell
       guard let imageDownloader else { return cell ?? UICollectionViewCell() }
       
@@ -63,18 +64,12 @@ class ViewController: UIViewController {
     }
   }
   
-  private func generateLayout() -> UICollectionViewLayout {
-    let itemSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .fractionalHeight(1.0))
-    let item = NSCollectionLayoutItem(layoutSize: itemSize)
-    
-    let groupSize = NSCollectionLayoutSize(widthDimension: .fractionalWidth(1.0), heightDimension: .absolute(80))
-    let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-    
-    let section = NSCollectionLayoutSection(group: group)
-    
-    section.interGroupSpacing = 10
-    
-    return UICollectionViewCompositionalLayout(section: section)
+  @objc
+  private func didDownloadAllButtonTapped() {
+    contentView.collectionView
+      .visibleCells
+      .compactMap { $0 as? Cell}
+      .forEach { $0.didButtonTapped() }
   }
 
 }

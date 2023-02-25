@@ -13,6 +13,7 @@
 		4834BCDE29A4BB3C00B06ADD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4834BCDD29A4BB3C00B06ADD /* Assets.xcassets */; };
 		4834BCE129A4BB3C00B06ADD /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4834BCDF29A4BB3C00B06ADD /* LaunchScreen.storyboard */; };
 		4834BCE929A4BBE700B06ADD /* ImageDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4834BCE829A4BBE700B06ADD /* ImageDownloader.swift */; };
+		488FC82129A9FC8C00885A2A /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488FC82029A9FC8C00885A2A /* MainView.swift */; };
 		48C8BD8529A5AB5D006EF474 /* Cell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48C8BD8429A5AB5D006EF474 /* Cell.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,7 @@
 		4834BCE029A4BB3C00B06ADD /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		4834BCE229A4BB3C00B06ADD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		4834BCE829A4BBE700B06ADD /* ImageDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDownloader.swift; sourceTree = "<group>"; };
+		488FC82029A9FC8C00885A2A /* MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainView.swift; sourceTree = "<group>"; };
 		48C8BD8429A5AB5D006EF474 /* Cell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cell.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -61,6 +63,7 @@
 				4834BCD429A4BB3B00B06ADD /* AppDelegate.swift */,
 				4834BCD629A4BB3B00B06ADD /* SceneDelegate.swift */,
 				4834BCD829A4BB3B00B06ADD /* ViewController.swift */,
+				488FC82029A9FC8C00885A2A /* MainView.swift */,
 				48C8BD8429A5AB5D006EF474 /* Cell.swift */,
 				4834BCE829A4BBE700B06ADD /* ImageDownloader.swift */,
 				4834BCDD29A4BB3C00B06ADD /* Assets.xcassets */,
@@ -141,6 +144,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4834BCD929A4BB3B00B06ADD /* ViewController.swift in Sources */,
+				488FC82129A9FC8C00885A2A /* MainView.swift in Sources */,
 				4834BCD529A4BB3B00B06ADD /* AppDelegate.swift in Sources */,
 				48C8BD8529A5AB5D006EF474 /* Cell.swift in Sources */,
 				4834BCE929A4BBE700B06ADD /* ImageDownloader.swift in Sources */,

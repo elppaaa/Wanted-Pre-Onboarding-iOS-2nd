@@ -50,7 +50,7 @@ final class Cell: UICollectionViewCell {
   }
   
   @objc
-  private func didButtonTapped() {
+  func didButtonTapped() {
     reset()
     worker?.start()
   }
