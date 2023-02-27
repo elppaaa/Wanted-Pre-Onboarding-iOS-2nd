@@ -44,14 +44,13 @@ final class ImageDownloader: NSObject {
     progressList[url.absoluteString] = object
     
     return TaskCancellable { [weak self] in
-      self?.cancel(key: url.absoluteString)
+      self?.clean(key: url.absoluteString)
     }
   }
   
   func setImage(url: URL) -> AsyncStream<DownloadState> {
     AsyncStream { continuation in
-      
-      let cancelTask =  setImage(url: url) { state in
+      let cleanTask = setImage(url: url) { state in
         continuation.yield(state)
         if state.isEnded {
           continuation.finish()
@@ -59,13 +58,13 @@ final class ImageDownloader: NSObject {
       }
       
       continuation.onTermination =  { @Sendable _ in
-        cancelTask?.cancel()
+        cleanTask?.clean()
       }
       
     }
   }
   
-  private func cancel(key: String) {
+  private func clean(key: String) {
     progressList[key]?.task?.cancel()
     progressList.removeValue(forKey: key)
   }
@@ -148,9 +147,9 @@ fileprivate struct Progress {
 }
 
 struct TaskCancellable {
-  fileprivate let cancelTask: () -> Void
+  fileprivate let cleanTask: () -> Void
   
-  func cancel() {
-    cancelTask()
+  func clean() {
+    cleanTask()
   }
 }

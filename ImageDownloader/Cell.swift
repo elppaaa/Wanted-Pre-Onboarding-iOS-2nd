@@ -21,10 +21,8 @@ final class Cell: UICollectionViewCell {
     button.setTitle("Down", for: .normal)
     return button
   }()
-  var worker: (() async -> ())?
-  var taskCancel: TaskCancellable?
-  
-  
+  var worker: (() -> AsyncStream<DownloadState>?)?
+  var downloadTask: Task<Void, Never>?
   
   // MARK: Initialize
   
@@ -42,26 +40,13 @@ final class Cell: UICollectionViewCell {
   override func prepareForReuse() {
     super.prepareForReuse()
     reset()
-    taskCancel?.cancel()
+    downloadTask?.cancel()
   }
   
   // MARK: Logic
   
   func downlaodImage(with downloader: ImageDownloader?, url: URL) {
-    worker = { @MainActor [weak downloader, weak self] in
-      guard let stream = downloader?.setImage(url: url) else { return }
-      for await state in  stream {
-        switch state {
-        case .done(let data):
-          self?.imageView.image = UIImage(data: data)
-          
-        case .progress(let percentage):
-          self?.progressBar.progress = Float(percentage)
-          
-        default: break;
-        }
-      }
-    }
+    worker = { downloader?.setImage(url: url) }
   }
   
   private func reset() {
@@ -72,8 +57,24 @@ final class Cell: UICollectionViewCell {
   @objc
   func didButtonTapped() {
     reset()
-    Task {
-      await worker?()
+    _setImage()
+  }
+  
+  private func _setImage() {
+    self.downloadTask = Task {
+      guard let stream = self.worker?() else { return }
+      
+      for await state in stream {
+        switch state {
+        case .done(let data):
+          self.imageView.image = UIImage(data: data)
+          
+        case .progress(let percentage):
+          self.progressBar.progress = Float(percentage)
+          
+        default: break;
+        }
+      }
     }
   }
   
