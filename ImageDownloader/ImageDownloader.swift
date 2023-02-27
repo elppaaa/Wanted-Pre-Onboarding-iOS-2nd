@@ -53,7 +53,7 @@ final class ImageDownloader: NSObject {
       
       let cancelTask =  setImage(url: url) { state in
         continuation.yield(state)
-        if case .done(_) = state, case .failed(_) = state {
+        if state.isEnded {
           continuation.finish()
         }
       }
@@ -111,6 +111,20 @@ public enum DownloadState {
   case progress(Double)
   case failed(Error)
   case ready
+  
+  var isEnded: Bool {
+    switch self {
+    case .failed:
+      fallthrough
+    case .done:
+      return true
+      
+    case .progress:
+      fallthrough
+    case .ready:
+      return false
+    }
+  }
 }
 
 protocol Worker {
