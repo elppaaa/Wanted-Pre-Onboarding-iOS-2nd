@@ -25,8 +25,15 @@ final class ViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    bindButton()
+    drawData()
+  }
+  
+  private func bindButton() {
     contentView.downloadAll.addTarget(self, action: #selector(didDownloadAllButtonTapped), for: .touchUpInside)
-    
+  }
+  
+  private func drawData() {
     let _sources = (0..<100)
       .compactMap { _ in URL(string: "https://picsum.photos/id/\(arc4random() % 500)/400") }
       .map { Item(url: $0) }
