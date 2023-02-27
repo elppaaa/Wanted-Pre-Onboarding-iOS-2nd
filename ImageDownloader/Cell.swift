@@ -21,8 +21,9 @@ final class Cell: UICollectionViewCell {
     button.setTitle("Down", for: .normal)
     return button
   }()
-  var worker: (() -> TaskCancellable?)?
+  var worker: (() async -> ())?
   var taskCancel: TaskCancellable?
+  
   
   
   // MARK: Initialize
@@ -47,17 +48,17 @@ final class Cell: UICollectionViewCell {
   // MARK: Logic
   
   func downlaodImage(with downloader: ImageDownloader?, url: URL) {
-    worker = { 
-      downloader?.setImage(url: url) { [weak self] state in
-        guard let self else { return }
+    worker = { @MainActor [weak downloader, weak self] in
+      guard let stream = downloader?.setImage(url: url) else { return }
+      for await state in  stream {
         switch state {
         case .done(let data):
-          self.imageView.image = UIImage(data: data)
-        case .progress(let percentage):
-          self.progressBar.progress = Float(percentage)
+          self?.imageView.image = UIImage(data: data)
           
-        default:
-          break;
+        case .progress(let percentage):
+          self?.progressBar.progress = Float(percentage)
+          
+        default: break;
         }
       }
     }
@@ -71,7 +72,9 @@ final class Cell: UICollectionViewCell {
   @objc
   func didButtonTapped() {
     reset()
-    taskCancel = worker?()
+    Task {
+      await worker?()
+    }
   }
   
   private func configLayout() {

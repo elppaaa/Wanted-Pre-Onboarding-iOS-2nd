@@ -48,6 +48,23 @@ final class ImageDownloader: NSObject {
     }
   }
   
+  func setImage(url: URL) -> AsyncStream<DownloadState> {
+    AsyncStream { continuation in
+      
+      let cancelTask =  setImage(url: url) { state in
+        continuation.yield(state)
+        if case .done(_) = state, case .failed(_) = state {
+          continuation.finish()
+        }
+      }
+      
+      continuation.onTermination =  { @Sendable _ in
+        cancelTask?.cancel()
+      }
+      
+    }
+  }
+  
   private func cancel(key: String) {
     progressList[key]?.task?.cancel()
     progressList.removeValue(forKey: key)
